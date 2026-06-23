@@ -39,6 +39,7 @@ export type AiDevObsEventType =
   | 'obs.session.stopped'
   | 'obs.session.annotated'
   | 'obs.course.module.selected'
+  | 'obs.task.type.selected'
   | 'obs.experiment.tagged'
   | 'obs.report.generated'
   | 'obs.chat.user_message'

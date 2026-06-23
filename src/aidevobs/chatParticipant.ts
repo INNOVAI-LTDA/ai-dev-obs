@@ -16,6 +16,8 @@ const COURSE_MODULES = [
   ['m8', 'Beyond Context']
 ];
 
+const TASK_TYPES = ['feature', 'bug', 'refactor', 'docs', 'research', 'test', 'architecture'];
+
 const SCENARIOS = [
   ['trivial-cli-calculator', 'Trivial', 'CLI calculator with tests'],
   ['low-fastapi-crud', 'Low', 'FastAPI CRUD for patients'],
@@ -84,6 +86,24 @@ export function registerAiDevObsChatParticipant(
 
         const session = await sessionManager.setCourseModule(moduleId);
         stream.markdown(`AIDevObs course module set to \`${moduleId}\` for session \`${session.sessionId}\`.`);
+        return;
+      }
+
+      if (prompt.startsWith('/task')) {
+        const taskType = prompt.replace('/task', '').trim();
+
+        if (!taskType) {
+          stream.markdown(`Missing task type. Use one of: ${TASK_TYPES.map((type) => `\`${type}\``).join(', ')}.`);
+          return;
+        }
+
+        if (!TASK_TYPES.includes(taskType)) {
+          stream.markdown(`Invalid task type \`${taskType}\`. Use one of: ${TASK_TYPES.map((type) => `\`${type}\``).join(', ')}.`);
+          return;
+        }
+
+        const session = await sessionManager.setTaskType(taskType);
+        stream.markdown(`AIDevObs task type set to \`${taskType}\` for session \`${session.sessionId}\`.`);
         return;
       }
 
@@ -209,6 +229,7 @@ export function registerAiDevObsChatParticipant(
           `- Experiment: ${session.experiment ?? 'not tagged'}`,
           `- Strategy: ${session.strategy ?? 'not tagged'}`,
           `- Complexity: ${session.complexity ?? 'not tagged'}`,
+          `- Task type: ${session.taskType ?? 'not tagged'}`,
           `- Tags: ${session.tags ? JSON.stringify(session.tags) : 'none'}`
         ].join('\n'));
         return;
