@@ -1,24 +1,19 @@
-import { AiDevObsChatEvent } from './types';
+import { AiDevObsChatEvent, AiDevObsSession } from './types';
+import { calculateSessionMetrics } from './metricsEngine';
 
-function getObservability(event: AiDevObsChatEvent): Record<string, unknown> | undefined {
-  const observability = event.payload.observability;
-  return observability && typeof observability === 'object' ? observability as Record<string, unknown> : undefined;
-}
 
-function getObservabilityNumber(event: AiDevObsChatEvent, field: 'totalchars' | 'estimatedTokens' | 'latencyMs'): number {
-  const observability = getObservability(event);
-  if (!observability) return 0;
-  const value = observability[field];
-  return typeof value === 'number' ? value : 0;
-}
+function createSessionFromEvents(events: AiDevObsChatEvent[]): AiDevObsSession {
+  const started = events.find((event) => event.type === 'obs.session.started');
+  const stopped = events.find((event) => event.type === 'obs.session.stopped');
 
-function getTokenCountingMethods(events: AiDevObsChatEvent[]): string[] {
-  const methods = new Set<string>();
-  for (const event of events) {
-    const method = getObservability(event)?.tokenCountingMethod;
-    if (typeof method === 'string') methods.add(method);
-  }
-  return Array.from(methods);
+  return {
+    sessionId: started?.sessionId ?? events[0]?.sessionId ?? 'unknown-session',
+    goal: typeof started?.payload.goal === 'string' ? started.payload.goal : undefined,
+    workspaceName: typeof started?.payload.workspaceName === 'string' ? started.payload.workspaceName : undefined,
+    startedAt: started?.timestamp ?? events[0]?.timestamp ?? new Date(0).toISOString(),
+    stoppedAt: stopped?.timestamp,
+    status: stopped ? 'stopped' : 'active'
+  };
 }
 
 function getModelLabels(events: AiDevObsChatEvent[]): string[] {
@@ -55,14 +50,7 @@ function aggregate(events: AiDevObsChatEvent[]) {
   const modelCompleted = events.filter((event) => event.type === 'obs.model.request.completed');
   const modelFailed = events.filter((event) => event.type === 'obs.model.request.failed');
   const modelSelected = events.filter((event) => event.type === 'obs.model.selected');
-  const conversationalEvents = [...userMessages, ...assistantResponses];
-
-  const userTotalChars = userMessages.reduce((sum, event) => sum + getObservabilityNumber(event, 'totalchars'), 0);
-  const assistantTotalChars = assistantResponses.reduce((sum, event) => sum + getObservabilityNumber(event, 'totalchars'), 0);
-  const userEstimatedTokens = userMessages.reduce((sum, event) => sum + getObservabilityNumber(event, 'estimatedTokens'), 0);
-  const assistantEstimatedTokens = assistantResponses.reduce((sum, event) => sum + getObservabilityNumber(event, 'estimatedTokens'), 0);
-  const latencyValues = assistantResponses.map((event) => getObservabilityNumber(event, 'latencyMs')).filter((value) => value > 0);
-  const averageLatencyMs = latencyValues.length ? Math.round(latencyValues.reduce((sum, value) => sum + value, 0) / latencyValues.length) : 0;
+  const sessionMetrics = calculateSessionMetrics(createSessionFromEvents(events), events);
 
   return {
     userMessages,
@@ -71,19 +59,11 @@ function aggregate(events: AiDevObsChatEvent[]) {
     modelCompleted,
     modelFailed,
     modelSelected,
-    userTotalChars,
-    assistantTotalChars,
-    userEstimatedTokens,
-    assistantEstimatedTokens,
-    totalChars: userTotalChars + assistantTotalChars,
-    totalEstimatedTokens: userEstimatedTokens + assistantEstimatedTokens,
-    tokenCountingMethods: getTokenCountingMethods(conversationalEvents),
+    sessionMetrics,
     modelLabels: getModelLabels([...assistantResponses, ...modelCompleted]),
-    averageLatencyMs,
     tags: collectTags(events)
   };
 }
-
 export function generateSummary(events: AiDevObsChatEvent[]): string {
   const started = events.find((event) => event.type === 'obs.session.started');
   const stopped = events.find((event) => event.type === 'obs.session.stopped');
@@ -129,13 +109,20 @@ export function generateSummary(events: AiDevObsChatEvent[]): string {
   lines.push('');
   lines.push(`- User messages: ${metrics.userMessages.length}`);
   lines.push(`- Assistant responses: ${metrics.assistantResponses.length}`);
-  lines.push(`- User totalchars: ${metrics.userTotalChars}`);
-  lines.push(`- Assistant totalchars: ${metrics.assistantTotalChars}`);
-  lines.push(`- Total chars: ${metrics.totalChars}`);
-  lines.push(`- User estimatedTokens: ${metrics.userEstimatedTokens}`);
-  lines.push(`- Assistant estimatedTokens: ${metrics.assistantEstimatedTokens}`);
-  lines.push(`- Total estimatedTokens: ${metrics.totalEstimatedTokens}`);
-  lines.push(`- tokenCountingMethod: ${metrics.tokenCountingMethods.length ? metrics.tokenCountingMethods.join(', ') : 'not available'}`);
+  lines.push(`- User totalchars: ${metrics.sessionMetrics.inputChars}`);
+  lines.push(`- Assistant totalchars: ${metrics.sessionMetrics.outputChars}`);
+  lines.push(`- Total chars: ${metrics.sessionMetrics.totalChars}`);
+  lines.push(`- User estimatedTokens: ${metrics.sessionMetrics.estimatedInputTokens}`);
+  lines.push(`- Assistant estimatedTokens: ${metrics.sessionMetrics.estimatedOutputTokens}`);
+  lines.push(`- Total estimatedTokens: ${metrics.sessionMetrics.estimatedTotalTokens}`);
+  lines.push(`- tokenCountingMethod: ${metrics.sessionMetrics.tokenCountingMethod}`);
+  lines.push(`- Human active timeMs: ${metrics.sessionMetrics.humanActiveTimeMs}`);
+  lines.push(`- AI response timeMs: ${metrics.sessionMetrics.aiResponseTimeMs}`);
+  lines.push(`- Total session timeMs: ${metrics.sessionMetrics.totalSessionTimeMs}`);
+  lines.push(`- Tokens per interaction: ${metrics.sessionMetrics.tokensPerInteraction}`);
+  lines.push(`- AI time per interactionMs: ${metrics.sessionMetrics.aiTimePerInteractionMs}`);
+  lines.push(`- Human/AI time ratio: ${metrics.sessionMetrics.humanAiRatio}`);
+  lines.push(`- Tokens per minute: ${metrics.sessionMetrics.tokensPerMinute ?? 'not available'}`);
   lines.push('');
 
   lines.push('## AI Proxy Observability');
@@ -145,7 +132,7 @@ export function generateSummary(events: AiDevObsChatEvent[]): string {
   lines.push(`- Model request failures: ${metrics.modelFailed.length}`);
   lines.push(`- Explicit model selections: ${metrics.modelSelected.length}`);
   lines.push(`- Models observed: ${metrics.modelLabels.length ? metrics.modelLabels.join(', ') : 'not available'}`);
-  lines.push(`- Average response latencyMs: ${metrics.averageLatencyMs || 'not available'}`);
+  lines.push(`- Average response latencyMs: ${metrics.sessionMetrics.averageResponseLatencyMs || 'not available'}`);
   lines.push(`- Billing available: false`);
   lines.push('');
 
@@ -221,9 +208,12 @@ export function generateModuleReport(events: AiDevObsChatEvent[], moduleId?: str
   lines.push('');
   lines.push(`- User messages: ${metrics.userMessages.length}`);
   lines.push(`- Assistant responses: ${metrics.assistantResponses.length}`);
-  lines.push(`- Total estimatedTokens: ${metrics.totalEstimatedTokens}`);
-  lines.push(`- Total chars: ${metrics.totalChars}`);
-  lines.push(`- Average response latencyMs: ${metrics.averageLatencyMs || 'not available'}`);
+  lines.push(`- Total estimatedTokens: ${metrics.sessionMetrics.estimatedTotalTokens}`);
+  lines.push(`- Total chars: ${metrics.sessionMetrics.totalChars}`);
+  lines.push(`- Tokens per interaction: ${metrics.sessionMetrics.tokensPerInteraction}`);
+  lines.push(`- Tokens per minute: ${metrics.sessionMetrics.tokensPerMinute ?? 'not available'}`);
+  lines.push(`- Human/AI time ratio: ${metrics.sessionMetrics.humanAiRatio}`);
+  lines.push(`- Average response latencyMs: ${metrics.sessionMetrics.averageResponseLatencyMs || 'not available'}`);
   lines.push(`- Models observed: ${metrics.modelLabels.length ? metrics.modelLabels.join(', ') : 'not available'}`);
   lines.push('');
   lines.push('## Suggested Classroom Discussion');
