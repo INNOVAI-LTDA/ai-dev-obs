@@ -1,0 +1,56 @@
+{
+  "name": "ai-dev-obs",
+  "displayName": "AIDevObs",
+  "description": "Observability for AI-assisted software development: sessions, prompts, model responses, context, estimated tokens, course experiments and reports.",
+  "version": "0.1.0",
+  "publisher": "innovai-ltda",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": ["Other", "AI"],
+  "activationEvents": [
+    "onChatParticipant:obs",
+    "onCommand:obs.init",
+    "onCommand:obs.start",
+    "onCommand:obs.summary",
+    "onCommand:obs.stop",
+    "onCommand:obs.status",
+    "onCommand:obs.report"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {"command": "obs.init", "title": "AIDevObs: Init Repository"},
+      {"command": "obs.start", "title": "AIDevObs: Start Session"},
+      {"command": "obs.status", "title": "AIDevObs: Show Session Status"},
+      {"command": "obs.summary", "title": "AIDevObs: Generate Summary"},
+      {"command": "obs.report", "title": "AIDevObs: Generate Module Report"},
+      {"command": "obs.stop", "title": "AIDevObs: Stop Session"}
+    ],
+    "chatParticipants": [
+      {
+        "id": "obs",
+        "name": "obs",
+        "fullName": "AIDevObs",
+        "description": "AI development observability participant for tracking prompts, model responses, session metrics, course experiments and module reports."
+      }
+    ]
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "lint": "eslint src --ext ts",
+    "package": "vsce package"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "@types/vscode": "^1.90.0",
+    "@typescript-eslint/eslint-plugin": "^7.12.0",
+    "@typescript-eslint/parser": "^7.12.0",
+    "eslint": "^8.57.0",
+    "typescript": "^5.4.5",
+    "@vscode/vsce": "^2.15.0"
+  }
+}
