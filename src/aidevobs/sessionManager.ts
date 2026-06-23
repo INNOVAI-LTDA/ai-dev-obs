@@ -117,6 +117,27 @@ export class AiDevObsSessionManager {
     return session;
   }
 
+  async setTaskType(taskType: string): Promise<AiDevObsSession> {
+    if (!this.currentSession) {
+      await this.start();
+    }
+
+    const session = this.currentSession!;
+    session.taskType = taskType;
+
+    await this.store.writeSession(session);
+
+    await this.store.appendEvent({
+      id: this.createEventId(),
+      type: 'obs.task.type.selected',
+      sessionId: session.sessionId,
+      timestamp: new Date().toISOString(),
+      payload: { taskType }
+    });
+
+    return session;
+  }
+
   async tagExperiment(tags: Record<string, string>): Promise<AiDevObsSession> {
     const session = await this.annotateSession({ tags });
 
