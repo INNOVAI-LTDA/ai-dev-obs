@@ -1,148 +1,421 @@
-# v0.2 — Cost Observability / CostOps Metrics
+# V0.2 — Cost Observability
 
-## Core Question
+## Status
 
-> How much did AI-assisted development cost?
+Planned
 
-## Objective
+---
 
-The goal of v0.2 is to expand AIDevObs from basic session observability into cost observability.
+# Objective
 
-This version introduces metrics that help developers, instructors and researchers understand the cost profile of an AI-assisted development session.
+The goal of V0.2 is to introduce quantitative observability into AI-assisted development sessions.
 
-Cost is not limited to money. In v0.2, cost includes:
+While V0.1 focuses on recording what happened during a session, V0.2 focuses on measuring how much effort, interaction and computational consumption were required.
 
-- Estimated token consumption
-- Number of interactions
-- Human active time
-- AI response time
-- Session duration
-- Complexity classification
-- Task type classification
-- Model usage
+The primary question addressed by this version is:
 
-## Scope
+> How much did it cost to complete a development activity using AI?
 
-v0.2 should capture and report:
+Cost in this context does not necessarily mean monetary cost.
 
-- Task type
-- Task complexity
-- Human active time
-- AI response time
-- Interaction count
-- Estimated input tokens
-- Estimated output tokens
-- Estimated total tokens
-- Tokens per interaction
-- AI time per interaction
-- Human/AI time ratio
+It refers to the resources consumed during the session:
 
-## Out of Scope
+* Human effort
+* AI effort
+* Interaction cycles
+* Context size
+* Character volume
+* Estimated token consumption
+* Session duration
 
-The following items are intentionally outside v0.2:
+---
 
-- Real billing integration with model providers
-- Pricing tables per vendor
-- Context source tracking
-- RAG source attribution
-- Agent routing
-- Agent-level cost attribution
-- Dashboard UI
-- SQLite or database migration
+# Scope
 
-## New Commands
+V0.2 introduces:
+
+* Cost Metrics
+* Human Time Tracking
+* AI Time Tracking
+* Task Classification
+* Complexity Classification
+* Cost Reports
+* Consolidated Reports
+* Analytics Export
+
+---
+
+# Out of Scope
+
+The following capabilities are intentionally excluded from V0.2:
+
+* Real API billing integration
+* Agent routing analysis
+* Context source tracking
+* Memory analysis
+* Architecture analysis
+* Dashboards
+* Database persistence
+* Multi-session analytics
+
+These capabilities belong to future roadmap stages.
+
+---
+
+# Architectural Goal
+
+The main architectural goal of V0.2 is to establish a reusable metrics collection layer.
+
+Future roadmap versions should not calculate metrics independently.
+
+Instead, all reports should consume a common Metrics Engine.
 
 ```text
-@obs /task <task-type>
-@obs /complexity <level>
+Session
+    │
+    ▼
+Metrics Engine
+    │
+    ├── Session Metrics
+    ├── Cost Metrics
+    ├── Context Metrics
+    ├── Agent Metrics
+    └── Research Metrics
+```
+
+V0.2 implements the first production version of this architecture.
+
+---
+
+# Session Model Changes
+
+## New Session Fields
+
+```json
+{
+  "taskType": "feature",
+  "complexity": "low",
+  "metrics": {
+    "interactionCount": 0,
+    "inputChars": 0,
+    "outputChars": 0,
+    "totalChars": 0,
+    "estimatedInputTokens": 0,
+    "estimatedOutputTokens": 0,
+    "estimatedTotalTokens": 0,
+    "humanActiveTimeMs": 0,
+    "aiResponseTimeMs": 0,
+    "totalSessionTimeMs": 0
+  }
+}
+```
+
+---
+
+# New Metrics
+
+## Interaction Count
+
+Tracks the number of observable interactions between the user and the AI.
+
+Used for:
+
+* Session efficiency
+* Cost analysis
+* Benchmark comparison
+
+---
+
+## Character Metrics
+
+Tracks:
+
+* Input characters
+* Output characters
+* Total characters
+
+Used for:
+
+* Token estimation
+* Context growth analysis
+* Future ContextOps metrics
+
+---
+
+## Token Metrics
+
+Estimated using:
+
+```text
+estimatedTokens = totalChars / 4
+```
+
+Tracked metrics:
+
+* Estimated Input Tokens
+* Estimated Output Tokens
+* Estimated Total Tokens
+
+Future versions may support model-specific tokenizers.
+
+---
+
+## Human Active Time
+
+Measures active work performed by the human.
+
+Tracked using:
+
+```text
 @obs /mark human-start
 @obs /mark human-stop
-@obs /cost
-@obs /efficiency
+```
+
+Accumulated across the session.
+
+---
+
+## AI Response Time
+
+Automatically measured.
+
+Flow:
+
+User Prompt
+↓
+Start Timer
+↓
+Model Processing
+↓
+Response Received
+↓
+Stop Timer
+
+Accumulated throughout the session.
+
+---
+
+## Session Duration
+
+Calculated as:
+
+```text
+sessionEndTime - sessionStartTime
+```
+
+---
+
+# New Commands
+
+## Task Classification
+
+```text
+@obs /task feature
+@obs /task bug
+@obs /task refactor
+@obs /task docs
+@obs /task research
+@obs /task test
+@obs /task architecture
+```
+
+Stored in:
+
+```json
+{
+  "taskType": "feature"
+}
+```
+
+---
+
+## Complexity Classification
+
+```text
+@obs /complexity trivial
+@obs /complexity low
+@obs /complexity medium
+@obs /complexity high
+```
+
+Stored in:
+
+```json
+{
+  "complexity": "medium"
+}
+```
+
+---
+
+## Human Time Tracking
+
+```text
+@obs /mark human-start
+
+@obs /mark human-stop
+```
+
+---
+
+## Cost Report
+
+```text
 @obs /report cost
+```
+
+Generates:
+
+```text
+v0.2-cost-observability.md
+```
+
+---
+
+## Consolidated Report
+
+```text
 @obs /report consolidated
+```
+
+Generates:
+
+```text
+consolidated-report.md
+```
+
+---
+
+## Export
+
+```text
 @obs /export json
+
 @obs /export csv
+
 @obs /export all
 ```
 
-## Recommended Task Types
+---
+
+# Generated Artifacts
+
+## Cost Report
 
 ```text
-feature
-bug
-refactor
-docs
-research
-test
-architecture
+reports/
+
+v0.2-cost-observability.md
 ```
 
-## Recommended Complexity Levels
+Purpose:
+
+Human-readable analysis of cost-related metrics.
+
+---
+
+## Consolidated Report
 
 ```text
-trivial
-low
-medium
-high
+reports/
+
+consolidated-report.md
 ```
 
-## Generated Artifacts
+Purpose:
+
+Single report aggregating all available observability layers.
+
+---
+
+## Analytics JSON
 
 ```text
-.aidevobs/
-  reports/
-    <session-id>/
-      v0.1-session-observability.md
-      v0.2-cost-observability.md
-      consolidated-report.md
-      analytics.json
-      analytics.csv
+reports/
+
+analytics.json
 ```
 
-## Success Criteria
+Purpose:
 
-v0.2 is considered complete when a user can run:
+Machine-readable export.
+
+Primary source for future dashboards.
+
+---
+
+## Analytics CSV
+
+```text
+reports/
+
+analytics.csv
+```
+
+Purpose:
+
+Import into:
+
+* Excel
+* Power BI
+* DuckDB
+* Python
+* BI platforms
+
+---
+
+# Acceptance Criteria
+
+V0.2 is considered complete when the following workflow succeeds:
 
 ```text
 @obs /init
-@obs /start fastapi-crud-cost-test
-@obs /module m4
+
+@obs /start fastapi-crud
+
 @obs /task feature
+
 @obs /complexity low
+
 @obs /mark human-start
-@obs Create a FastAPI CRUD for patients with tests.
+
+Create a FastAPI CRUD for patients.
+
 @obs /mark human-stop
-@obs /summary
+
 @obs /report cost
+
 @obs /report consolidated
+
 @obs /export all
+
 @obs /stop
 ```
 
-And obtain:
+And the system produces:
 
 ```text
-.aidevobs/sessions/<session-id>/session.json
-.aidevobs/sessions/<session-id>/chat-events.jsonl
-.aidevobs/sessions/<session-id>/summary.md
-.aidevobs/reports/<session-id>/v0.2-cost-observability.md
-.aidevobs/reports/<session-id>/consolidated-report.md
-.aidevobs/reports/<session-id>/analytics.json
-.aidevobs/reports/<session-id>/analytics.csv
+interactionCount
+tokenMetrics
+humanActiveTime
+aiResponseTime
+costReport
+consolidatedReport
+analyticsJson
+analyticsCsv
 ```
 
-## Why This Module Matters
+without requiring any external database or dashboard.
 
-v0.2 creates the first economic and operational view of AI-assisted development.
+---
 
-It allows AIDevObs to move from:
+# Future Dependencies
 
-> What happened?
+V0.2 prepares the foundation for:
 
-To:
+* V0.3 Context Observability
+* V0.4 Development Analytics
+* V0.5 Agent Observability
+* V0.7 Research Mode
 
-> What did it cost?
-
-This is the foundation for later modules such as ContextOps, Development Analytics and AgentOps.
-
+The metrics introduced here are expected to be reused by all future roadmap modules.
