@@ -23,6 +23,7 @@ export class AiDevObsSessionManager {
     const sessionId = this.createSessionId(goal);
 
     const session: AiDevObsSession = {
+      schemaVersion: '0.2',
       sessionId,
       goal,
       workspaceName,

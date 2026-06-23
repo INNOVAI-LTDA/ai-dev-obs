@@ -1,6 +1,24 @@
 export type AiDevObsSessionStatus = 'active' | 'stopped';
 
+export interface AiDevObsCostMetrics {
+  interactionCount: number;
+  inputChars: number;
+  outputChars: number;
+  totalChars: number;
+  estimatedInputTokens: number;
+  estimatedOutputTokens: number;
+  estimatedTotalTokens: number;
+  tokenCountingMethod: 'totalchars/4' | string;
+  humanActiveTimeMs: number;
+  aiResponseTimeMs: number;
+  totalSessionTimeMs: number;
+  tokensPerInteraction: number;
+  aiTimePerInteractionMs: number;
+  humanAiRatio: number;
+}
+
 export interface AiDevObsSession {
+  schemaVersion?: '0.1' | '0.2' | string;
   sessionId: string;
   goal?: string;
   workspaceName?: string;
@@ -11,6 +29,8 @@ export interface AiDevObsSession {
   experiment?: string;
   strategy?: string;
   complexity?: 'trivial' | 'low' | 'medium' | 'high' | string;
+  taskType?: 'feature' | 'bug' | 'refactor' | 'docs' | 'research' | 'test' | 'architecture' | string;
+  metrics?: AiDevObsCostMetrics;
   tags?: Record<string, string>;
 }
 

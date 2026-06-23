@@ -53,6 +53,7 @@ class AiDevObsSessionManager {
         const workspaceName = vscode.workspace.workspaceFolders?.[0]?.name;
         const sessionId = this.createSessionId(goal);
         const session = {
+            schemaVersion: '0.2',
             sessionId,
             goal,
             workspaceName,
