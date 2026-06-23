@@ -1,0 +1,1 @@
+{"version":3,"file":"textMetrics.js","sourceRoot":"","sources":["../../src/aidevobs/textMetrics.ts"],"names":[],"mappings":";;AAMA,gEAQC;AARD,SAAgB,0BAA0B,CAAC,IAAY;IACrD,MAAM,UAAU,GAAG,IAAI,CAAC,MAAM,CAAC;IAE/B,OAAO;QACL,UAAU;QACV,eAAe,EAAE,IAAI,CAAC,IAAI,CAAC,UAAU,GAAG,CAAC,CAAC;QAC1C,mBAAmB,EAAE,cAAc;KACpC,CAAC;AACJ,CAAC"}
